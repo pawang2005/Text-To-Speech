@@ -10,7 +10,7 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: ["https://text-to-speech-pago.vercel.app/", "https://text-to-speech-dusky-alpha.vercel.app/"],
+    origin: ["https://text-to-speech-pago.vercel.app/", "https://text-to-speech-dusky-alpha.vercel.app/", "http://localhost:3000", "http://localhost:5173"],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: "*",
     credentials:true
