@@ -8,12 +8,14 @@ let main_url = 'https://api.mymemory.translated.net/get?q=';
 
 app.use(express.json());
 
+app.options("*", cors());
+
 app.use(
   cors({
-    origin: ["https://text-to-speech-pago.vercel.app/", "https://text-to-speech-dusky-alpha.vercel.app/", "http://localhost:3000", "http://localhost:5173"],
+    origin: ["https://text-to-speech-pago.vercel.app", "https://text-to-speech-dusky-alpha.vercel.app", "http://localhost:3000", "http://localhost:5173"],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: "*",
-    credentials:true
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
   })
 );
 
