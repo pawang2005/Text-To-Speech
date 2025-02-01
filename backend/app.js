@@ -7,6 +7,10 @@ const fetch = require('node-fetch');  // Make sure you have node-fetch installed
 let main_url = 'https://api.mymemory.translated.net/get?q=';
 
 app.use(express.json());
+app.use(cors({
+  origin: 'https://your-frontend-url.vercel.app', // Your production frontend URL
+}));
+
 app.use(
   cors({
     origin: "*",

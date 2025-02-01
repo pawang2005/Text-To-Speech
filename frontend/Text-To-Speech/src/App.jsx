@@ -55,7 +55,7 @@ function App() {
 
   const handlePlay = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/translate", {
+      const response = await fetch("https://text-to-speech-dusky-alpha.vercel.app/api/translate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
