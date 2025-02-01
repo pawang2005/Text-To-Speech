@@ -8,16 +8,23 @@ let main_url = 'https://api.mymemory.translated.net/get?q=';
 
 app.use(express.json());
 
-app.options("*", cors());
+const corsOptions = {
+  origin: [
+    "https://text-to-speech-pago.vercel.app",
+    "https://text-to-speech-dusky-alpha.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:5173"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+};
 
-app.use(
-  cors({
-    origin: ["https://text-to-speech-pago.vercel.app", "https://text-to-speech-dusky-alpha.vercel.app", "http://localhost:3000", "http://localhost:5173"],
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
-  })
-);
+app.use(cors(corsOptions));
+
+// Handle CORS Preflight Requests
+app.options("*", cors(corsOptions));
+
 
 app.post("/api/translate", async (req, res) => {
   const { text, lang } = req.body;
