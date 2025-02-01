@@ -2,62 +2,52 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const transliteration = require('transliteration');
-const fetch = require('node-fetch');  // Make sure you have node-fetch installed
+const fetch = require('node-fetch');
 
-let main_url = 'https://api.mymemory.translated.net/get?q=';
+// Define allowed origins
+const allowedOrigins = [
+  'https://text-to-speech-pago.vercel.app',  // Your frontend URL
+  'http://localhost:3000',  // Local development URL
+  'http://localhost:5173'   // Vite's default development URL
+];
 
-app.use(express.json());
+// CORS configuration
 app.use(cors({
-  origin: 'https://your-frontend-url.vercel.app', // Your production frontend URL
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: "*",
-  })
-);
+app.use(express.json());
 
 app.post("/api/translate", async (req, res) => {
   const { text, lang } = req.body;
-  
-  // Check if required fields are provided
+ 
   if (!text || !lang) {
-    return res.status(400).json({ 
-      success: false, 
-      message: "Text and language code are required" 
+    return res.status(400).json({
+      success: false,
+      message: "Text and language code are required"
     });
   }
 
   try {
-    // Fetching translation from external API
-    let response;
-    try {
-      response = await fetch(`${main_url}${encodeURIComponent(text)}&langpair=en|${lang}`);
-      if (!response.ok) {
-        throw new Error(`API request failed with status: ${response.status}`);
-      }
-    } catch (fetchError) {
-      console.error("Fetch error:", fetchError);
-      return res.status(500).json({
-        success: false,
-        message: "Error fetching data from translation service",
-      });
+    const response = await fetch(`${main_url}${encodeURIComponent(text)}&langpair=en|${lang}`);
+    if (!response.ok) {
+      throw new Error(`API request failed with status: ${response.status}`);
     }
 
-    let data;
-    try {
-      data = await response.json();
-    } catch (jsonError) {
-      console.error("JSON parsing error:", jsonError);
-      return res.status(500).json({
-        success: false,
-        message: "Error parsing translation response",
-      });
-    }
+    const data = await response.json();
 
-    // Check if translation data is valid
     if (!data.matches || data.matches.length === 0) {
       return res.status(404).json({
         success: false,
@@ -66,24 +56,14 @@ app.post("/api/translate", async (req, res) => {
     }
 
     const translatedData = data.matches[0].translation;
+    const romanizedText = transliteration.transliterate(translatedData);
 
-    // Transliterate to Latin script
-    let romanizedText;
-    try {
-      romanizedText = transliteration.transliterate(translatedData);
-    } catch (transliterateError) {
-      console.error("Transliteration error:", transliterateError);
-      romanizedText = translatedData; // Fallback to the original translation if transliteration fails
-    }
-
-    // Respond with translated and transliterated data
     return res.json({
       success: true,
       translatedData: romanizedText,
       message: "Text translation successful",
       ogTranslatedData: translatedData,
     });
-
   } catch (error) {
     console.error("Unexpected error:", error);
     return res.status(500).json({
@@ -93,6 +73,12 @@ app.post("/api/translate", async (req, res) => {
   }
 });
 
-app.listen(3000, () => {
-  console.log("Server is running on port 3000");
-});
+// For Vercel, we need to export the app
+module.exports = app;
+
+// Only listen if we're running directly (not on Vercel)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(3000, () => {
+    console.log("Server is running on port 3000");
+  });
+}
