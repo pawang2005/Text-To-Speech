@@ -2,58 +2,60 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const transliteration = require('transliteration');
-const fetch = require('node-fetch');
+const fetch = require('node-fetch');  // Make sure you have node-fetch installed
 
-const main_url = 'https://api.mymemory.translated.net/get?q=';
+let main_url = 'https://api.mymemory.translated.net/get?q=';
 
-// CORS Middleware setup
-app.use(cors({
-  origin: 'https://text-to-speech-pago.vercel.app',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  optionsSuccessStatus: 200
-}));
-
-// Handle preflight requests
-app.options('*', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', 'https://text-to-speech-pago.vercel.app');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
-
-// Parse JSON bodies
 app.use(express.json());
 
-// Global middleware to set CORS headers for all responses
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://text-to-speech-pago.vercel.app');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  next();
-});
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: "*",
+    credentials:true
+  })
+);
 
 app.post("/api/translate", async (req, res) => {
   const { text, lang } = req.body;
- 
+  
+  // Check if required fields are provided
   if (!text || !lang) {
-    return res.status(400).json({
-      success: false,
-      message: "Text and language code are required"
+    return res.status(400).json({ 
+      success: false, 
+      message: "Text and language code are required" 
     });
   }
 
   try {
-    const response = await fetch(`${main_url}${encodeURIComponent(text)}&langpair=en|${lang}`);
-    if (!response.ok) {
-      throw new Error(`API request failed with status: ${response.status}`);
+    // Fetching translation from external API
+    let response;
+    try {
+      response = await fetch(`${main_url}${encodeURIComponent(text)}&langpair=en|${lang}`);
+      if (!response.ok) {
+        throw new Error(`API request failed with status: ${response.status}`);
+      }
+    } catch (fetchError) {
+      console.error("Fetch error:", fetchError);
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching data from translation service",
+      });
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error("JSON parsing error:", jsonError);
+      return res.status(500).json({
+        success: false,
+        message: "Error parsing translation response",
+      });
+    }
 
+    // Check if translation data is valid
     if (!data.matches || data.matches.length === 0) {
       return res.status(404).json({
         success: false,
@@ -62,14 +64,24 @@ app.post("/api/translate", async (req, res) => {
     }
 
     const translatedData = data.matches[0].translation;
-    const romanizedText = transliteration.transliterate(translatedData);
 
+    // Transliterate to Latin script
+    let romanizedText;
+    try {
+      romanizedText = transliteration.transliterate(translatedData);
+    } catch (transliterateError) {
+      console.error("Transliteration error:", transliterateError);
+      romanizedText = translatedData; // Fallback to the original translation if transliteration fails
+    }
+
+    // Respond with translated and transliterated data
     return res.json({
       success: true,
       translatedData: romanizedText,
       message: "Text translation successful",
       ogTranslatedData: translatedData,
     });
+
   } catch (error) {
     console.error("Unexpected error:", error);
     return res.status(500).json({
@@ -79,11 +91,6 @@ app.post("/api/translate", async (req, res) => {
   }
 });
 
-// Export for Vercel
-module.exports = app;
-
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(3000, () => {
-    console.log("Server is running on port 3000");
-  });
-}
+app.listen(3000, () => {
+  console.log("Server is running on port 3000");
+});
