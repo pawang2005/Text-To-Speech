@@ -59,34 +59,38 @@ function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json",
         },
+        credentials: 'include',
         body: JSON.stringify({ text, lang }),
       });
-
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
       const data = await response.json();
       if (data.success) {
         console.log("Translated text:", data.translatedData);
-        setTText(data.ogTranslatedData)
+        setTText(data.ogTranslatedData);
         const utterance = new SpeechSynthesisUtterance();
         utterance.text = data.translatedData;
-        utterance.lang = lang; // Set the language
-
-        // Find a matching voice for the language
+        utterance.lang = lang;
+  
         const matchingVoice = voices.find((voice) =>
           voice.lang.toLowerCase().startsWith(lang.toLowerCase())
         );
-
+  
         if (matchingVoice) {
           utterance.voice = matchingVoice;
         }
-
-        // Log the utterance configuration for debugging
+  
         console.log("Speaking with config:", {
           text: utterance.text,
           lang: utterance.lang,
           voice: utterance.voice ? utterance.voice.name : "default",
         });
-
+  
         speechSynthesis.speak(utterance);
       } else {
         console.error(
